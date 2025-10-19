@@ -1,0 +1,60 @@
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define SS_PIN 10       // Pin SDA del lector RFID
+#define RST_PIN 9       // Pin RST del lector RFID
+#define LED_PIN 7       // Pin del LED indicador
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+// UID de la tarjeta registrada (reemplaza con la tuya)
+byte tarjetaRegistrada[] = {0x6D, 0xCB, 0xC0, 0x1};
+
+
+ // ← Cambia estos valores
+
+void setup() {
+  Serial.begin(9600);
+  SPI.begin();             // Inicializa comunicación SPI
+  rfid.PCD_Init();         // Inicializa el lector RFID
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("Acerca tu tarjeta...");
+}
+
+void loop() {
+  // Verifica si hay una tarjeta nueva
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+    return;
+  }
+
+  // Muestra la UID detectada
+  Serial.print("UID detectado: ");
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    Serial.print(rfid.uid.uidByte[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  // Compara la UID con la registrada
+  if (compararUID(rfid.uid.uidByte, tarjetaRegistrada, rfid.uid.size)) {
+    Serial.println("✅ Tarjeta válida");
+    digitalWrite(LED_PIN, HIGH);
+    delay(3000); // LED encendido por 3 segundos
+    digitalWrite(LED_PIN, LOW);
+  } else {
+    Serial.println("❌ Tarjeta no registrada");
+  }
+
+  rfid.PICC_HaltA(); // Detiene la comunicación con la tarjeta
+}
+
+// Función para comparar UID
+bool compararUID(byte* uid, byte* tarjeta, byte longitud) {
+  for (byte i = 0; i < longitud; i++) {
+    if (uid[i] != tarjeta[i]) {
+      return false;
+    }
+  }
+  return true;
+}
